@@ -22,14 +22,9 @@ def mostrar_login():
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         st.write("---")
-        usuario_prueba = st.selectbox(
-            "Seleccionar perfil de prueba",
-            ["", "admin@construmix.pe", "operaciones@construmix.pe", "finanzas@construmix.pe"]
-        )
         with st.form("form_login"):
-            correo = st.text_input("Correo Electrónico", value=usuario_prueba)
-            password_default = USUARIOS_PRECONFIGURADOS.get(usuario_prueba, {}).get("password", "") if usuario_prueba else ""
-            password = st.text_input("Contraseña", type="password", value=password_default)
+            correo = st.text_input("Correo Electrónico")
+            password = st.text_input("Contraseña", type="password")
             submit = st.form_submit_button("Ingresar")
             if submit:
                 if iniciar_sesion(correo, password):
@@ -173,8 +168,7 @@ def mostrar_dashboard():
     st.write("---")
 
     # --- 2. TOP CLIENTES Y FÓRMULAS ---
-    st.markdown("### 🏆 Ranking: Top 10 Clientes y Fórmulas")
-    c1, c2 = st.columns(2)
+    st.markdown("### 🏆 Ranking: Top 10 Clientes")
     
     # Top 10 Clientes
     df_clientes = df_base_f.groupby('Nombre cliente')['M3'].sum().reset_index()
@@ -192,9 +186,11 @@ def mostrar_dashboard():
     )
     fig_share.update_traces(marker_color="#D91A1E", textposition='outside')
     fig_share.update_layout(yaxis_type='category', xaxis_title="Volumen (M³)")
-    c1.caption("Cálculo: Suma de M³ para los 10 clientes con mayor demanda respecto al Total del periodo.")
-    c1.plotly_chart(fig_share, use_container_width=True)
+    st.caption("Cálculo: Suma de M³ para los 10 clientes con mayor demanda respecto al Total del periodo.")
+    st.plotly_chart(fig_share, use_container_width=True)
     
+    st.write("---")
+    st.markdown("### 🏆 Ranking: Top 10 Tipos de Concreto")
     # Top 10 Fórmulas
     df_formulas = df_base_f.groupby('Fórmula')['M3'].sum().reset_index()
     df_formulas = df_formulas.nlargest(10, 'M3').sort_values(by='M3', ascending=True)
@@ -211,8 +207,8 @@ def mostrar_dashboard():
     )
     fig_mix.update_traces(marker_color="#1E242B", textposition='outside')
     fig_mix.update_layout(yaxis_type='category', xaxis_title="Volumen (M³)")
-    c2.caption("Cálculo: Suma de M³ para los 10 concretos de mayor despacho respecto al Total del periodo.")
-    c2.plotly_chart(fig_mix, use_container_width=True)
+    st.caption("Cálculo: Suma de M³ para los 10 concretos de mayor despacho respecto al Total del periodo.")
+    st.plotly_chart(fig_mix, use_container_width=True)
 
     st.write("---")
 
@@ -243,7 +239,6 @@ def mostrar_dashboard():
 
     # --- 4. GRÁFICOS DE BARRAS (COMPOSICIÓN Y SIGNIFICANCIA) ---
     st.markdown("### 🏭 Composición Operativa y Desviaciones de Materiales")
-    c3, c4 = st.columns(2)
     
     df_mat_agrupado = df_mat_f.groupby('Material')[['Consumo_Teorico', 'Consumo_Real']].sum().reset_index()
     df_mat_agrupado = df_mat_agrupado[df_mat_agrupado['Consumo_Teorico'] > 0]
@@ -261,8 +256,8 @@ def mostrar_dashboard():
     )
     fig_desv.update_traces(marker_color=df_mat_agrupado['Color'], textposition='outside')
     fig_desv.update_layout(xaxis_title="Variación % (Positivo = Merma)", height=max(400, len(df_mat_agrupado) * 40))
-    c3.caption("Cálculo: ((Σ Real - Σ Teórico) / Σ Teórico) * 100 para cada Insumo.")
-    c3.plotly_chart(fig_desv, use_container_width=True)
+    st.caption("Cálculo: ((Σ Real - Σ Teórico) / Σ Teórico) * 100 para cada Insumo.")
+    st.plotly_chart(fig_desv, use_container_width=True)
 
     st.write("---")
 
@@ -281,7 +276,7 @@ def mostrar_dashboard():
     df_horm['Participacion_%'] = (df_horm['M3'] / df_horm['M3'].sum()) * 100
     df_horm = df_horm.sort_values(by='M3', ascending=True)
 
-    c5, c6 = st.columns(2)
+
     
     fig_operativa_m3 = px.bar(
         df_horm,
@@ -293,9 +288,11 @@ def mostrar_dashboard():
     )
     fig_operativa_m3.update_traces(marker_color=COLOR_GRIS_OSCURO, textposition='outside')
     fig_operativa_m3.update_layout(yaxis_type='category', xaxis_title="M³", height=max(400, len(df_horm) * 35))
-    c5.caption("Cálculo: Suma aritmética de M³ despachados por Mixer.")
-    c5.plotly_chart(fig_operativa_m3, use_container_width=True)
+    st.caption("Cálculo: Suma aritmética de M³ despachados por Mixer.")
+    st.plotly_chart(fig_operativa_m3, use_container_width=True)
     
+    st.write("---")
+    st.markdown("### 🚚 Desempeño Operativo: Vueltas por Mixer")
     df_horm_vueltas = df_horm.sort_values(by='Vueltas', ascending=True)
     fig_operativa_v = px.bar(
         df_horm_vueltas,
@@ -307,8 +304,8 @@ def mostrar_dashboard():
     )
     fig_operativa_v.update_traces(marker_color=COLOR_ROJO_PRIMARIO, textposition='outside')
     fig_operativa_v.update_layout(yaxis_type='category', xaxis_title="Número de Vueltas", height=max(400, len(df_horm_vueltas) * 35))
-    c6.caption("Cálculo: Conteo de viajes/ciclos (vueltas) por Mixer.")
-    c6.plotly_chart(fig_operativa_v, use_container_width=True)
+    st.caption("Cálculo: Conteo de viajes/ciclos (vueltas) por Mixer.")
+    st.plotly_chart(fig_operativa_v, use_container_width=True)
 
 def main():
     if not st.session_state.autenticado:

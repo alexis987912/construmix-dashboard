@@ -257,7 +257,7 @@ def mostrar_dashboard():
             x='M3', 
             orientation='h',
             text=df_top_formulas['M3'].apply(lambda x: f"{x:,.1f} M³ ({(x/total_periodo_f)*100:.1f}%)"),
-            color_discrete_sequence=[COLOR_SLATE_DARK]
+            color_discrete_sequence=[COLOR_GRIS_OSCURO]
         )
         fig_formulas.update_traces(textposition='outside')
         fig_formulas.update_layout(yaxis={'categoryorder':'total ascending'}, xaxis_title="Volumen Total (M³)", height=max(400, len(df_top_formulas) * 35))

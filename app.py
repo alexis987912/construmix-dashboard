@@ -130,11 +130,25 @@ def mostrar_dashboard():
 
     st.write("---")
     
-    # --- 1.5 EVOLUCIÓN EN EL TIEMPO (GRÁFICO APILADO) ---
+    # --- 1.5 EVOLUCIÓN EN EL TIEMPO (GRÁFICO APILADO CON BUSCADOR) ---
     st.markdown("### 📊 Evolución del Volumen y Composición por Concreto")
-    st.caption("Cálculo: Suma de Volumen (M³) distribuido en el tiempo, segmentado individualmente por cada Fórmula de concreto.")
     
-    df_evolucion = df_base_f.copy()
+    # Buscador de Fórmulas
+    todas_las_formulas = sorted(df_base_f['Fórmula'].unique().tolist())
+    top_5_inicial = df_base_f.groupby('Fórmula')['M3'].sum().nlargest(5).index.tolist()
+    
+    formulas_seleccionadas = st.multiselect(
+        "🔍 Buscador de Concretos (Selecciona las fórmulas a comparar):",
+        options=todas_las_formulas,
+        default=top_5_inicial,
+        help="Agrega o quita fórmulas para no saturar el gráfico. Por defecto se muestran las 5 más vendidas del periodo."
+    )
+    
+    if formulas_seleccionadas:
+        df_evolucion = df_base_f[df_base_f['Fórmula'].isin(formulas_seleccionadas)].copy()
+    else:
+        df_evolucion = df_base_f.head(0).copy()
+        
     df_evolucion['Grupo_Fórmula'] = df_evolucion['Fórmula']
     
     # Determinar el eje X según el filtro
@@ -145,23 +159,25 @@ def mostrar_dashboard():
         df_evolucion['Eje_X'] = df_evolucion['Fecha'].dt.strftime('%d - %a')
         x_label = "Días del Mes"
     else:
-        # Diario
         df_evolucion['Eje_X'] = df_evolucion['Nombre cliente']
         x_label = "Clientes"
         
     df_evo_grouped = df_evolucion.groupby(['Eje_X', 'Grupo_Fórmula'])['M3'].sum().reset_index()
     
-    fig_evo = px.bar(
-        df_evo_grouped, 
-        x='Eje_X', 
-        y='M3', 
-        color='Grupo_Fórmula',
-        title="Distribución Total de Despachos",
-        text=df_evo_grouped['M3'].apply(lambda x: f"{x:,.0f}" if x > 10 else ""),
-        color_discrete_sequence=px.colors.sequential.Reds_r
-    )
-    fig_evo.update_layout(xaxis_title=x_label, yaxis_title="Volumen (M³)", barmode='stack')
-    st.plotly_chart(fig_evo, use_container_width=True)
+    if not df_evo_grouped.empty:
+        fig_evo = px.bar(
+            df_evo_grouped, 
+            x='Eje_X', 
+            y='M3', 
+            color='Grupo_Fórmula',
+            title=f"Volumen Despachado ({len(formulas_seleccionadas)} fórmulas seleccionadas)",
+            text=df_evo_grouped['M3'].apply(lambda x: f"{x:,.1f}" if x > 5 else ""),
+            color_discrete_sequence=px.colors.qualitative.Bold
+        )
+        fig_evo.update_layout(xaxis_title=x_label, yaxis_title="Volumen (M³)", barmode='stack')
+        st.plotly_chart(fig_evo, use_container_width=True)
+    else:
+        st.warning("Selecciona al menos una fórmula en el buscador para ver la evolución.")
     
     st.write("---")
 
@@ -207,17 +223,56 @@ def mostrar_dashboard():
     fig_mix.update_layout(yaxis_type='category', xaxis_title="Volumen (M³)")
     st.caption("Cálculo: Suma de M³ para los 10 concretos de mayor despacho respecto al Total del periodo.")
     st.plotly_chart(fig_mix, use_container_width=True)
-
+    
     st.write("---")
 
-    # --- 3. VARIACIONES EN DOSIFICACIONES POR FÓRMULA ---
-    st.markdown("### 🔬 Variaciones en Dosificaciones por Fórmula")
+    df_top_clientes = df_base_f.groupby('Nombre cliente')['M3'].sum().reset_index()
+    df_top_clientes = df_top_clientes.sort_values(by='M3', ascending=False).head(10)
+    
+    if not df_top_clientes.empty:
+        total_periodo = df_base_f['M3'].sum()
+        fig_clientes = px.bar(
+            df_top_clientes, 
+            y='Nombre cliente', 
+            x='M3', 
+            orientation='h',
+            text=df_top_clientes['M3'].apply(lambda x: f"{x:,.1f} M³ ({(x/total_periodo)*100:.1f}%)"),
+            color_discrete_sequence=[COLOR_ROJO_PRIMARIO]
+        )
+        fig_clientes.update_traces(textposition='outside')
+        fig_clientes.update_layout(yaxis={'categoryorder':'total ascending'}, xaxis_title="Volumen Total (M³)", height=max(400, len(df_top_clientes) * 35))
+        st.plotly_chart(fig_clientes, use_container_width=True)
+
+    st.markdown("### 🏆 Ranking: Top 10 Fórmulas de Concreto")
+    st.caption("Cálculo: Suma de M³ para las 10 fórmulas más producidas respecto al Total del periodo.")
+    
+    df_top_formulas = df_base_f.groupby('Fórmula')['M3'].sum().reset_index()
+    df_top_formulas = df_top_formulas.sort_values(by='M3', ascending=False).head(10)
+    
+    if not df_top_formulas.empty:
+        total_periodo_f = df_base_f['M3'].sum()
+        fig_formulas = px.bar(
+            df_top_formulas, 
+            y='Fórmula', 
+            x='M3', 
+            orientation='h',
+            text=df_top_formulas['M3'].apply(lambda x: f"{x:,.1f} M³ ({(x/total_periodo_f)*100:.1f}%)"),
+            color_discrete_sequence=[COLOR_SLATE_DARK]
+        )
+        fig_formulas.update_traces(textposition='outside')
+        fig_formulas.update_layout(yaxis={'categoryorder':'total ascending'}, xaxis_title="Volumen Total (M³)", height=max(400, len(df_top_formulas) * 35))
+        st.plotly_chart(fig_formulas, use_container_width=True)
+    
+    st.write("---")
+    
+    # --- 3. RENDIMIENTO DE FÓRMULAS (REAL VS TEÓRICO) ---
+    st.markdown("### 🧪 Variaciones en Dosificaciones por Fórmula")
     
     # Agrupar por fórmula
     df_form_var = df_mat_f.groupby('Formula')[['Consumo_Teorico', 'Consumo_Real']].sum().reset_index()
     df_form_var = df_form_var[df_form_var['Consumo_Teorico'] > 0] # Evitar divisiones por cero
     df_form_var['Diferencia'] = df_form_var['Consumo_Real'] - df_form_var['Consumo_Teorico']
-    df_form_var['Variacion_%'] = (df_form_var['Diferencia'] / df_form_var['Consumo_Teorico']) * 100
+    df_form_var['Variacion_%'] = ((df_form_var['Diferencia'] / df_form_var['Consumo_Teorico']) * 100).round(2)
     df_form_var = df_form_var.sort_values(by='Variacion_%', ascending=False)
     df_form_var['Color'] = df_form_var['Variacion_%'].apply(lambda x: COLOR_ROJO_PRIMARIO if x > 0 else "#28a745")
 
@@ -232,16 +287,16 @@ def mostrar_dashboard():
     fig_form.update_layout(yaxis_title="Variación % (Positivo = Merma)", height=max(400, len(df_form_var) * 35))
     st.caption("Cálculo: ((Σ Consumo Real - Σ Consumo Teórico) / Σ Consumo Teórico) * 100 para cada Fórmula.")
     st.plotly_chart(fig_form, use_container_width=True)
-
+    
     st.write("---")
 
-    # --- 4. GRÁFICOS DE BARRAS (COMPOSICIÓN Y SIGNIFICANCIA) ---
+    # --- 4. ANÁLISIS DE MATERIALES (MERMAS) ---
     st.markdown("### 🏭 Composición Operativa y Desviaciones de Materiales")
     
     df_mat_agrupado = df_mat_f.groupby('Material')[['Consumo_Teorico', 'Consumo_Real']].sum().reset_index()
     df_mat_agrupado = df_mat_agrupado[df_mat_agrupado['Consumo_Teorico'] > 0]
     df_mat_agrupado['Diferencia'] = df_mat_agrupado['Consumo_Real'] - df_mat_agrupado['Consumo_Teorico']
-    df_mat_agrupado['Variacion_%'] = (df_mat_agrupado['Diferencia'] / df_mat_agrupado['Consumo_Teorico']) * 100
+    df_mat_agrupado['Variacion_%'] = ((df_mat_agrupado['Diferencia'] / df_mat_agrupado['Consumo_Teorico']) * 100).round(2)
     df_mat_agrupado['Color'] = df_mat_agrupado['Variacion_%'].apply(lambda x: COLOR_ROJO_PRIMARIO if x > 0 else "#28a745")
     
     fig_desv = px.bar(

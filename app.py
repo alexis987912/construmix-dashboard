@@ -132,12 +132,10 @@ def mostrar_dashboard():
     
     # --- 1.5 EVOLUCIÓN EN EL TIEMPO (GRÁFICO APILADO) ---
     st.markdown("### 📊 Evolución del Volumen y Composición por Concreto")
-    st.caption("Cálculo: Suma de Volumen (M³) distribuido en el tiempo, segmentado por las 5 Fórmulas más usadas (el resto se agrupa en 'Otras').")
+    st.caption("Cálculo: Suma de Volumen (M³) distribuido en el tiempo, segmentado individualmente por cada Fórmula de concreto.")
     
-    # Identify top 5 formulas to prevent color overflow
-    top_5_formulas = df_base_f.groupby('Fórmula')['M3'].sum().nlargest(5).index.tolist()
     df_evolucion = df_base_f.copy()
-    df_evolucion['Grupo_Fórmula'] = df_evolucion['Fórmula'].apply(lambda x: x if x in top_5_formulas else 'Otras')
+    df_evolucion['Grupo_Fórmula'] = df_evolucion['Fórmula']
     
     # Determinar el eje X según el filtro
     if tipo_filtro == "Anual":
